@@ -1,0 +1,82 @@
+---
+title: "Charts Created in R"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE, collapse=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readxl)
+library(plotly)
+library(dplyr)
+data <- read_excel("hotdog-contest-winners.xlsm")
+# Create the Decade column based on the value of the year
+data$Decade[data$Year < 1990] <- "80's"
+data$Decade[data$Year >= 1990 & data$Year < 2000] <- "90's"
+data$Decade[data$Year >= 2000 & data$Year < 2020] <- "00's"
+data$Decade[data$Year > 2009] <- "10's"
+# Create the Hot Dogs Eaten Range column based on the dogs eaten column total
+data$Range[data$`Dogs eaten` <20] <- "Low"
+data$Range[data$`Dogs eaten` >=20 & data$`Dogs eaten` <50] <- "Average"
+data$Range[data$`Dogs eaten` >=50] <- "High"
+# Create a dataframe that totls wins by country for future pie chart
+by_country <- data %>% count(Country, sort = TRUE)
+# Create a dataframe that totls hot dogs eaten ranges for future pie chart
+by_range <- data %>% count(Range, sort = TRUE)
+```
+<br>
+
+```{r echo=FALSE, message=FALSE, comment = NA, warning=FALSE, collapse=TRUE, tidy=TRUE}
+# Bar chart
+a <- list( ticks = "outside")
+fig <- plot_ly(x = data$Year,y =data$`Dogs eaten`, type = "bar") %>% layout(title = 'Hot Dogs Eaten by Year', xaxis = a, yaxis = a)
+fig
+```
+<br>
+
+```{r echo=FALSE, message=FALSE, comment = NA, warning=FALSE, collapse=TRUE, tidy=TRUE}
+# Stacked Bar Chart
+# Create the data for the different decades and country
+Decades <- c("80's", "90's", "00's", "10's")
+US <- c(97, 156, 193, 54)
+Japan <- c(0, 44, 326, 0)
+Mexico <- c(20, 0, 0, 0)
+Germany <- c(10, 0, 0, 0)
+# Create the stacked data dataframe
+stacked_data <- data.frame(Decades,US,Japan,Mexico,Germany)
+stacked_data$Decades <- factor(stacked_data$Decades, levels = c("80's", "90's", "00's", "10's"))
+a <- list(title = "Total Hot Dogs Eaten")
+fig <- plot_ly(stacked_data, x = ~Decades, y = ~US, type = 'bar')
+fig <- fig %>% add_trace(y = ~Japan, name = 'Japan')
+fig <- fig %>% add_trace(y = ~Mexico, name = 'Mexico')
+fig <- fig %>% add_trace(y = ~Germany, name = 'Germany')
+fig <- fig %>% layout(title = "Hot Dogs Eaten by Decade by Country",yaxis = list(title = 'Hot Dogs Eaten'), barmode = 'stack')
+fig
+```
+<br>
+
+```{r echo=FALSE, message=FALSE, comment = NA, warning=FALSE, collapse=TRUE, tidy=TRUE}
+# Pie Chart
+fig <- plot_ly(by_country, labels = ~Country, values = ~n, type = 'pie', textinfo = 'percent')
+fig <- fig %>% layout(title = 'Hot Dog Eating Championships by Country',
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+
+fig
+```
+<br>
+
+```{r echo=FALSE, message=FALSE, comment = NA, warning=FALSE, collapse=TRUE, tidy=TRUE}
+#Donut Chart
+fig <- by_range %>% plot_ly(labels = ~Range, values = ~n, textinfo='label+percent')
+fig <- fig %>% add_pie(hole = 0.6)
+fig <- fig %>% layout(title = 'Hot Dogs Eaten by Category',showlegend = F,
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+
+fig
+```
+
+
