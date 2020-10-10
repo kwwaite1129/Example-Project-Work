@@ -1,0 +1,40 @@
+---
+title: "DSC 640 Assignment 2.2"
+author: "Kenny Waite"
+date: "9/26/2020"
+output: html_document
+---
+```{r setup, include=FALSE, collapse=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readxl)
+library(plotly)
+library(dplyr)
+library(ggplot2)
+data <- read.csv("decades.csv")
+data
+```
+<br>
+
+```{r echo=FALSE, message=FALSE, comment = NA, warning=FALSE, collapse=TRUE, tidy=TRUE}
+# Line chart
+fig <- plot_ly(x = data$Year,y =data$Population, type = "scatter", mode = "lines") %>% layout(title = 'World Population by Year',yaxis = list(rangemode = "tozero", ticks = "outside", title = "World Population(Billions)"), xaxis = list(ticks = "outside", title = "Year"))
+fig
+```
+<br>
+
+```{r echo=FALSE, message=FALSE, comment = NA, warning=FALSE, collapse=TRUE, tidy=TRUE}
+# Stair Chart
+addUnits <- function(n) {
+  labels <- ifelse(n < 1000, n,  # less than thousands
+                   ifelse(n < 1e6, paste0(round(n/1e3), 'k'),  # in thousands
+                          ifelse(n < 1e9, paste0(round(n/1e6), 'M'),  # in millions
+                                 ifelse(n < 1e12, paste0(round(n/1e9), 'B'), # in billions
+                                        ifelse(n < 1e15, paste0(round(n/1e12), 'T'), # in trillions
+                                               'too big!'
+                                        )))))
+  return(labels)
+}
+
+ggplot() + geom_step(data=data, mapping=aes(x=Year, y=Population), color = "green") +labs(title='World Population by Year', x ="Year", y = "World Population(Billions)") + expand_limits(y = 0) +
+  scale_y_continuous(labels = addUnits)
+```
