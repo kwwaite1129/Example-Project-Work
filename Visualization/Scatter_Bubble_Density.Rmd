@@ -1,0 +1,40 @@
+---
+title: "DSC 640 Assignment 3.2"
+author: "Kenny Waite"
+date: "10/6/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE, collapse=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readxl)
+library(plotly)
+library(dplyr)
+library(ggplot2)
+library(treemap)
+tv_data <- read.csv("tv_sizes.txt", sep="\t")
+crime_data <- read.csv("crimerates-by-state-2005.csv")
+```
+<br>
+
+```{r echo=FALSE, message=FALSE, comment = NA, warning=FALSE, collapse=TRUE, tidy=TRUE}
+p <- ggplot(tv_data, aes(x = size)) + geom_density() +labs(title='TV Size Density Plot', x ="TV Size", y = "Density")
+
+fig <- ggplotly(p)
+
+fig
+```
+<br>
+
+```{r echo=FALSE, message=FALSE, comment = NA, warning=FALSE, collapse=TRUE, tidy=TRUE}
+
+crime_data_filtered <- filter(crime_data, state != 'District of Columbia')
+
+ggplot(crime_data_filtered, aes(x = murder, y = burglary)) + geom_point() +labs(title='Relationship Between Murder and Burglaries', x ="Murder Rate", y = "Burglary Rate")
+```
+
+```{r echo=FALSE, message=FALSE, comment = NA, warning=FALSE, collapse=TRUE, tidy=TRUE}
+
+ggplot(crime_data_filtered, aes(x = motor_vehicle_theft, y = burglary)) + geom_point(aes(size = murder)) +labs(title='Relationship Between Motore Vehicle Theft and\n Burglaries with Size Represented by Murder Rate', x ="Motor Vehicle Theft Rate", y = "Burglary Rate")
+
+```
