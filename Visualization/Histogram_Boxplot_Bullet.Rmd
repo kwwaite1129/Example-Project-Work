@@ -1,0 +1,120 @@
+---
+title: "Assignment 6.2"
+author: "Kenny Waite"
+date: "11/13/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE, collapse=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readxl)
+library(plotly)
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(hablar)
+
+edu_data <- read.csv('education.csv')
+edu_data <- edu_data[-c(1), ]
+crime_data <- read.csv('state_crime_data.csv')
+
+read_mean <- round(mean(edu_data$reading), digits = 0)
+math_mean <- round(mean(edu_data$math), digits = 0)
+writing_mean <- round(mean(edu_data$writing), digits = 0)
+
+read_min <- round(min(edu_data$reading), digits = 0)
+math_min <- round(min(edu_data$math), digits = 0)
+writing_min <- round(min(edu_data$writing), digits = 0)
+
+read_max <- round(max(edu_data$reading), digits = 0)
+math_max <- round(max(edu_data$math), digits = 0)
+writing_max <- round(max(edu_data$writing), digits = 0)
+
+max_values <- list(read_max,math_max,writing_max)
+min_values <- list(read_min,math_min,writing_min)
+
+nc_data <- filter(edu_data, state == "North Carolina")
+nc_reading <- nc_data$reading
+nc_math <- nc_data$math
+nc_writing <- nc_data$writing
+```
+
+<br>
+
+```{r echo=FALSE, message=FALSE, comment = NA, warning=FALSE, collapse=TRUE, tidy=TRUE}
+
+fig <- plot_ly(x = edu_data$writing, type = "histogram")%>% layout(title = 'Histogram of the US Writing SAT Scores',yaxis = list(rangemode = "tozero", ticks = "outside", title = "Count of Writing SAT Scores"), xaxis = list(ticks = "outside", title = "Writing SAT Score"))
+
+fig
+```
+
+<br>
+
+```{r echo=FALSE, message=FALSE, comment = NA, warning=FALSE, collapse=TRUE, tidy=TRUE}
+boxplot(aggravated_assault~State_Region, data=crime_data, 
+  col=(c("gold","darkgreen","red","blue","orange")),
+  main="US Aggravated Assault Rate by US Region", xlab="US State Region", ylab = "Aggravated Assault Rate")
+
+```
+
+<br>
+
+```{r echo=FALSE, message=FALSE, comment = NA, warning=FALSE, collapse=TRUE, tidy=TRUE}
+
+fig <- plot_ly() 
+fig <- fig %>%
+  add_trace(
+    type = "indicator",
+    mode = "number+gauge+delta",
+    value = nc_reading,
+    delta = list(reference = read_mean),
+    domain = list(x = c(0.25, 1), y = c(0.08, 0.25)),
+    title =list(text = "Reading"),
+    gauge = list(
+      shape = "bullet",
+      axis = list(range = c(NULL, max(unlist(max_values))+100)),
+      threshold = list(
+        line= list(color = "red", width = 2),
+        thickness = 0.75,
+        value = read_mean),
+      steps = list(range = c(0, read_min), color = "lightgray"),
+      bar = list(color = "black"))) 
+fig <- fig %>%
+  add_trace(
+    type = "indicator",
+    mode = "number+gauge+delta",
+    value = nc_math,
+    delta = list(reference = math_mean),
+    domain = list(x = c(0.25, 1), y = c(0.4, 0.6)),
+    title = list(text = "Math"),
+    gauge = list(
+      shape = "bullet",
+      axis = list(range = list(NULL, max(unlist(max_values))+100)),
+      threshold = list(
+        line = list(color = "red", width= 2),
+        thickness = 0.75,
+        value = math_mean),
+      steps = list(range = c(0, math_min), color = "lightgray"),
+      bar = list(color = "black"))) 
+fig <- fig %>%
+  add_trace(
+    type =  "indicator",
+    mode = "number+gauge+delta",
+    value = nc_writing,
+    delta = list(reference = writing_mean ),
+    domain = list(x = c(0.25, 1), y = c(0.7, 0.9)),
+    title = list(text = "Writing"),
+    gauge = list(
+      shape = "bullet",
+      axis = list(range = list(0, max(unlist(max_values))+100)),
+      threshold = list(
+        line = list(color = "red", width = 2),
+        thickness = 0.75,
+        value = writing_mean),
+      steps = list(range = c(0, writing_min), color = "lightgray"),
+      bar = list(color = "black")))
+fig <- fig%>%layout(title = 'North Carolina SAT Test Scores')
+
+fig
+
+```
