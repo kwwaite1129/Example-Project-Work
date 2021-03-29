@@ -1,0 +1,527 @@
+---
+title: "St. Paul Bike Accident Analysis"
+author: "Kenny Waite"
+date: "2/27/2020"
+output:
+  pdf_document: default
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE, collapse=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+library(jsonlite)
+library(dplyr)
+library(lubridate)
+library(chron)
+library(naniar)
+library(GGally)
+library(psych)
+library(QuantPsyc)
+library(caTools)
+library(formatR)
+```
+
+# Introduction
+As a society, Americans are trying to develop a more active lifestyle for both the health benefits as well for the enjoyment that comes with getting outside. One of the most popular recreational activities in America is cycling. Cities are becoming more aware of the desire for bike trails and greenways, however, many major cities still lack an extensive trail system for bicyclists. If you would like to cover long distance on your cycling outing, you most likely will have to at some point share the road with vehicles. For a majority of reasons, this can be problematic, both for the bicyclists and the driver of the vehicle. Until sufficient bike lanes are created and greenway trail systems are matured, the road will have to be shared. 
+
+# Problem Statement
+For my project, I will be attempting to identify the high volume locations of bike accidents in St. Paul Minnesota and identify what factors lead to an area being high risk for bike accidents in St. Paul. This analysis is important for multiple reasons. For starters, bikers can use this data to avoid specific areas when planning their bike routes in order to minimize their chances of getting in an accident with a vehicle. Also, when planning future streets/bike lanes/greenways, cities will be able to use this analysis to assist them in designing roads and locations that reduce bike accidents.
+## The Process
+I used three models in an attempt to find the most accurate way to predict bike accidents in each of the three districts. Regression, Multiple Regression and Logistical Regression. The below outlines the findings from running the data through these three models.
+## The Data
+I will be using data collected by the [St. Paul Police Department](https://www.opendatanetwork.com/dataset/information.stpaul.gov/9qtp-ayhq) to determined what characteristics are related to areas of high bike and pedestrian crashes. As you can see from the below code, there was a lot of data cleanup and manipulation I had to perform. As well as creating new fields, I had to convert data types, and remove any incorrect data. I added comments to the code below so you can see specifically what I did to clean up the data.
+
+
+```{r echo=TRUE, message=FALSE, comment = NA, warning=FALSE, collapse=TRUE, tidy=TRUE}
+bikeDataRaw <- fromJSON("https://information.stpaul.gov/resource/bw92-5h94.json?crash_type=Bike")
+bikeData <- bikeDataRaw[,c(1,3,5,9,10,17,22,23,24,25)]
+# Convert the date_time to a datetime format from a character
+bikeData$date_time <- as_datetime(bikeData$date_time)
+# Split the date and time values up from the date_time value
+bikeData$date <- as.Date(bikeData$date_time)
+time <- strftime(bikeData$date_time, format="%H:%M:%S")
+bikeData$time <- chron(times=time)
+bikeData$month <- month(bikeData$date)
+# Create district accident and citation to counts
+bikeData$central_Accidents <- ifelse(bikeData$district == "Central District",1,0)
+bikeData$eastern_Accidents <- ifelse(bikeData$district == "Eastern District",1,0)
+bikeData$western_Accidents <- ifelse(bikeData$district == "Western District",1,0)
+bikeData$citation_Biker <- ifelse(bikeData$citation_to == "Biker",1,0)
+bikeData$citation_Driver <- ifelse(bikeData$citation_to == "Driver",1,0)
+# Convert values from character to numerics
+bikeData$driver_age <- as.numeric(bikeData$driver_age)
+bikeData$speed_limit <- as.numeric(bikeData$speed_limit)
+bikeData$lanes_of_traffic<- as.numeric(bikeData$lanes_of_traffic)
+bikeData$biker_age <- as.numeric(bikeData$biker_age)
+#Create new fields
+bikeData$season <- ifelse(bikeData$month %in% 10:12, "Fall", ifelse(bikeData$month %in% 1:3, "Winter", ifelse(bikeData$month %in% 4:6,"Spring",ifelse(bikeData$month %in% 4:6,"Summer","Unknown"))))
+bikeData$driver_skill_level <- ifelse(bikeData$driver_age <=24, "New Driver", ifelse(bikeData$driver_age %in% 25:64, "Experienced Driver",ifelse(bikeData$driver_age >=65, "Senior Driver","Unknown")))
+# Remove incorrect data
+bikeData <- subset(bikeData, bikeData$district!="Transit" & bikeData$district!="State Patrol" & bikeData$district!="Metro Transit PD" & bikeData$injury_to_biker!="Unknown" & bikeData$driver_skill_level!="Unknown" & bikeData$season!="Unknown")
+summary(bikeData)
+```
+# The Analysis
+Now, what you have all been waiting for, the ***ANALYSIS***. This is the part of the report where we dig into the data and see what kind of insights we can identify.
+
+## Linear Regression
+The first approach I took to analyzing the data was using linear regression models to identify if there were any strong relationships between the data points and the amount of bike accidents in each district. Linear regression cannot be performed with categorical data points, so I had to create three new data sets for each district excluding the categorical values.
+
+```{r echo=TRUE, message=FALSE, comment = NA, warning=FALSE, collapse=TRUE, tidy=TRUE}
+bikeDataCentral <- bikeData[,c(5,7,9,10,14)]
+bikeDataEastern <- bikeData[,c(5,7,9,10,15)]
+bikeDataWestern <- bikeData[,c(5,7,9,10,16)]
+```
+Once the new data sets were created, I then used the contrivance matrix below to see what type of relationship each variable had to the amount of accidents in each district.
+<br>
+<br>
+***Central District***
+```{r echo=TRUE, message=FALSE, comment = NA, warning=FALSE, collapse=TRUE, tidy=TRUE} 
+cov(bikeDataCentral, use = "complete.obs")
+```
+<br>
+***Eastern District***
+```{r echo=TRUE, message=FALSE, comment = NA, warning=FALSE, collapse=TRUE, tidy=TRUE} 
+cov(bikeDataEastern, use = "complete.obs")
+```
+<br>
+***Western District***
+```{r echo=TRUE, message=FALSE, comment = NA, warning=FALSE, collapse=TRUE, tidy=TRUE} 
+cov(bikeDataWestern, use = "complete.obs")
+```
+<br>
+<br>
+```{r echo=FALSE, message=FALSE, comment = NA, warning=FALSE, collapse=TRUE, tidy=TRUE}
+table1<- "
+District | Biker Age | Lanes of Traffic | Speed Limit | Driver Age | Month
+---------|-----------|------------------|-------------|------------|-------
+Central  | Negative  |     Positive     |  Positive   |  Negative  | Positive
+Eastern  | Negative  |     Negative     |  Negative   |  Negative  | Positive
+Western  | Positive  |     Negative     |  Negative   |  Positive  | Negative
+"
+```
+<br>
+<br>
+***Positive or Negative Relationship Between The Variables and The Accidents by District***
+`r table1`
+
+The table above highlights the positive or negative relationship between the different variables and the amount of accidents per district.
+
+<br>
+Next I created three correlation matrices for each district to get a quick snapshot of which variables had the greatest impact on the relationship to bike accidents occurring.
+<br>
+***Central District***
+```{r echo=FALSE, message=FALSE, comment = NA, warning=FALSE, collapse=TRUE, tidy=TRUE}
+ggpairs(na.omit(bikeDataCentral))
+```
+<br>
+***Eastern District***
+```{r echo=FALSE, message=FALSE, comment = NA, warning=FALSE, collapse=TRUE, tidy=TRUE}
+ggpairs(na.exclude(bikeDataEastern))
+```
+<br>
+***Western District***
+```{r echo=FALSE, message=FALSE, comment = NA, warning=FALSE, collapse=TRUE, tidy=TRUE}
+ggpairs(na.exclude(bikeDataWestern))
+```
+<br>
+```{r echo=FALSE, comment = NA}
+centralBikerAgeCor <- format(cor(x = bikeData$central_Accidents, y=bikeData$biker_age, use = "complete.obs"), digits = 4)
+centralLanesCor <- format(cor(x = bikeData$central_Accidents, y=bikeData$lanes_of_traffic, use = "complete.obs"), digits = 4)
+centralSpeedCor <- format(cor(x = bikeData$central_Accidents, y=bikeData$speed_limit, use = "complete.obs"), digits = 4)
+centralDriverAgeCor <- format(cor(x = bikeData$central_Accidents, y=bikeData$driver_age, use = "complete.obs"), digits = 4)
+easternBikerAgeCor <- format(cor(x = bikeData$eastern_Accidents, y=bikeData$biker_age, use = "complete.obs"), digits = 4)
+easternLanesCor <- format(cor(x = bikeData$eastern_Accidents, y=bikeData$lanes_of_traffic, use = "complete.obs"), digits = 4)
+easternSpeedCor <- format(cor(x = bikeData$eastern_Accidents, y=bikeData$speed_limit, use = "complete.obs"), digits = 4)
+easternDriverAgeCor <- format(cor(x = bikeData$eastern_Accidents, y=bikeData$driver_age, use = "complete.obs"), digits = 4)
+westernBikerAgeCor <- format(cor(x = bikeData$western_Accidents, y=bikeData$biker_age, use = "complete.obs"), digits = 4)
+westernLanesCor <- format(cor(x = bikeData$western_Accidents, y=bikeData$lanes_of_traffic, use = "complete.obs"), digits = 4)
+westernSpeedCor <- format(cor(x = bikeData$western_Accidents, y=bikeData$speed_limit, use = "complete.obs"), digits = 4)
+westernDriverAgeCor <- format(cor(x = bikeData$western_Accidents, y=bikeData$driver_age, use = "complete.obs"), digits = 4)
+```
+
+<br>
+The next table shows the correlation coefficients for between each variable and the amount of accidents per district.
+<br>
+<br>
+***Positive or Negative Relationship Between The Variables and The Accidents by District***
+```{r echo=FALSE, message=FALSE, comment = NA, warning=FALSE, collapse=TRUE, tidy=TRUE}
+corTableRowLabels <- c("Biker Age","Lanes of Traffic","Speed Limit", "Driver Age" )
+centralCorData <- c(centralBikerAgeCor, centralLanesCor, centralSpeedCor, centralDriverAgeCor)
+easternCorData <- c(easternBikerAgeCor, easternLanesCor, easternSpeedCor, easternDriverAgeCor)
+westernCorData <- c(westernBikerAgeCor, westernLanesCor, westernSpeedCor, westernDriverAgeCor)
+table2 <- data.frame(Variable = corTableRowLabels, Central = centralCorData, Eastern =easternCorData, Western = westernCorData )
+table2
+```
+<br>
+Every variable has a weak positive or negative correlation between the variable and the number of accidents in the district. 
+<br>
+```{r echo=FALSE, comment = NA}
+centralBikerAgeDetermin<- format(as.numeric(centralBikerAgeCor)^2, digits = 4)
+centralLanesDetermin<- format(as.numeric(centralLanesCor)^2, digits = 4)
+centralSpeedDetermin<- format(as.numeric(centralSpeedCor)^2, digits = 4)
+centralDriverAgeDetermin<- format(as.numeric(centralDriverAgeCor)^2, digits = 4)
+easternBikerAgeDetermin<- format(as.numeric(easternBikerAgeCor)^2, digits = 4)
+easternLanesDetermin<- format(as.numeric(easternLanesCor)^2, digits = 4)
+easternSpeedDetermin<- format(as.numeric(easternSpeedCor)^2, digits = 4)
+easternDriverAgeDetermin<- format(as.numeric(easternDriverAgeCor)^2, digits = 4)
+westernBikerAgeDetermin<- format(as.numeric(westernBikerAgeCor)^2, digits = 4)
+westernLanesDetermin<- format(as.numeric(westernLanesCor)^2, digits = 4)
+westernSpeedDetermin<- format(as.numeric(westernSpeedCor)^2, digits = 4)
+westernDriverAgeDetermin<- format(as.numeric(westernDriverAgeCor)^2, digits = 4)
+```
+<br>
+The next table shows the coefficient of determination for between each variable and the amount of accidents per district.
+<br>
+<br>
+***Positive or Negative Relationship Between The Variables and The Accidents by District***
+```{r echo=FALSE, message=FALSE, comment = NA, warning=FALSE, collapse=TRUE, tidy=TRUE}
+determTableRowLabels <- c("Biker Age","Lanes of Traffic","Speed Limit", "Driver Age" )
+centralDetermData <- c(centralBikerAgeDetermin, centralLanesDetermin, centralSpeedDetermin, centralDriverAgeDetermin)
+easternDetermData <- c(easternBikerAgeDetermin, easternLanesDetermin, easternSpeedDetermin, easternDriverAgeDetermin)
+westernDetermData <- c(westernBikerAgeDetermin, westernLanesDetermin, westernSpeedDetermin, westernDriverAgeDetermin)
+table3 <- data.frame(Variable = determTableRowLabels, Central = centralDetermData, Eastern =easternDetermData, Western = westernDetermData )
+table3
+```
+<br>
+Looking at this table, a lot of the variables do not account for more than 1% of the variation in the amount of accidents in each district. Some of the larger coefficient of determinations are shown in the table below. However, most of the percentages are low leaving more than 90% of the variability in the amount of bike accidents to be accounted for by other variables. 
+<br>
+```{r echo=FALSE, message=FALSE, comment = NA, warning=FALSE, collapse=TRUE, tidy=TRUE}
+districtTableRowLabels <- c("Central","Central","Eastern", "Western" )
+varibleDetermVariable <- c("Biker Age", "Lanes of Traffic", "Lanes of Traffic","Biker Age")
+percentDeterm <- c("3%", "6%", "2%", "7%")
+table4 <- data.frame(District = districtTableRowLabels, Variable = varibleDetermVariable, Percentage_of_Variation =percentDeterm)
+table4
+```
+
+### Linear Regression Conclusion
+Based on my analysis, you cannot say that the Biker Age, Lanes of Traffic, Speed Limit or Driver Age are a direct cause of more bike accidents. However, what you can say is that there was a weak, sometimes positive, sometimes negative relationship depending on the variable(see the able above) between Biker Age, Lanes of Traffic, Speed Limit or Driver Age and the amount of bike accidents per district.
+
+## Regression Model
+I then decided to run a few of the variables through a regression model to see what the model would say about the variables and their impact of the variation of bike accidents in St. Paul. Below is the raw results of the regression model between the selected variables and their corresponding districts.
+<br>
+<br>
+***Regression Analysis Between Central District Accidents and Biker Age***
+```{r echo=FALSE, message=FALSE, comment= NA}
+centralBikerAgeReg <- lm(central_Accidents ~ biker_age, data = bikeData, na.action = "na.omit")
+centralBikerAgeReg
+summary(centralBikerAgeReg)
+```
+<br>
+***Regression Analysis Between Central District Accidents and Lanes of Traffic***
+```{r echo=FALSE, message=FALSE, comment= NA}
+centralLanesReg <- lm(central_Accidents ~ lanes_of_traffic, data = bikeData, na.action = "na.omit")
+centralLanesReg
+summary(centralLanesReg)
+```
+<br>
+***Regression Analysis Between Eastern District Accidents and Lanes of Traffic***
+```{r echo=FALSE, message=FALSE, comment= NA}
+easternLanesReg <- lm(eastern_Accidents ~ lanes_of_traffic, data = bikeData, na.action = "na.omit")
+easternLanesReg
+summary(easternLanesReg)
+```
+<br>
+***Regression Analysis Between Western District Accidents and Biker Age***
+```{r echo=FALSE, message=FALSE, comment= NA}
+westernBikerAgeReg <- lm(western_Accidents ~ biker_age, data = bikeData, na.action = "na.omit")
+westernBikerAgeReg
+summary(westernBikerAgeReg)
+```
+<br>
+The below table highlights, in the first column of what the model for each variable predicted for the number of bike accidents. For bike lanes, I chose 4 and for biker age I chose 35. This is selfishly because I usually bike on 4 lane roads and am getting close to 35.
+<br>
+The second column identifies whether if you had chose the the mean value of the number of accidents, would it have resulted in a significantly better or worse prediction.
+<br>
+```{r echo=FALSE, message=FALSE, comment = NA, warning=FALSE, collapse=TRUE, tidy=TRUE}
+regTableRowLabels <- c("Central~Biker Age","Central~Lanes of Traffic","Eastern~Lanes of Traffic", "Western~Biker Age" )
+regModelPredict <- c(format(0.520912+(-0.004837*35), digits = 1), format(0.11397+(0.09743*4), digits = 1), format(0.42660+(-0.05635*4), digits = 1),format(0.178578 +(0.006959*35), digits = 1))
+betterWorse <- c("Better", "Better", "Significantly Better", "Better")
+regFRatio <- c("0.034", "0.014", "0.121", "0.0023")
+table5 <- data.frame(Regression_Model = regTableRowLabels, Accidents_Predicted_by_Model = regModelPredict, Mean_Better_or_Worse =betterWorse, F_Ratio = regFRatio)
+table5
+```
+<br>
+<br>
+
+### Regression Model Conclusion
+Based on the f Ratios and and R^2^ values, we would need to collect more data and additional data types to use these models when predicting the number of bike accidents by district in St. Paul, MN.
+<br>
+
+## Multiple Regression
+I am now going to try and see if a Multiple Regression Model is something I can use with this data in an attempt to identify high risk causes for accidents by district.
+<br>
+<br>
+***Multiple Regression Analysis Between Central District Accidents and Biker Age, Lanes of Traffic, Speed Limit and Driver Age***
+```{r echo=FALSE, message=FALSE, comment = NA, warning=FALSE, collapse=TRUE, tidy=TRUE}
+centralMReg <-  lm(central_Accidents ~ biker_age + lanes_of_traffic + speed_limit + driver_age, data = na.exclude(bikeData))
+summary(centralMReg)
+```
+<br>
+***Multiple Regression Analysis Between Eastern District Accidents and Biker Age, Lanes of Traffic, Speed Limit and Driver Age***
+```{r echo=FALSE, message=FALSE, comment = NA, warning=FALSE, collapse=TRUE, tidy=TRUE}
+easternMReg <-  lm(eastern_Accidents ~ biker_age + lanes_of_traffic + speed_limit + driver_age, data = na.exclude(bikeData))
+summary(easternMReg)
+```
+<br>
+***Multiple Regression Analysis Between Western District Accidents and Biker Age, Lanes of Traffic, Speed Limit and Driver Age***
+```{r echo=FALSE, message=FALSE, comment = NA, warning=FALSE, collapse=TRUE, tidy=TRUE}
+westernMReg <-  lm(western_Accidents ~ biker_age + lanes_of_traffic + speed_limit + driver_age, data = na.exclude(bikeData))
+summary(westernMReg)
+```
+<br>
+The next tables highlights how much better the multiple regression model predicts the variation in bike accidents per district compared to the regression model.
+<br>
+```{r echo=FALSE, message=FALSE, comment = NA, warning=FALSE, collapse=TRUE, tidy=TRUE}
+mRegTableRowLabels <- c("Central","Eastern", "Western")
+mRegPercentDeterm <- c("8%", "4%", "10%")
+mRefDeltaPercentDeterm <- c("2%", "2%", "3%")
+table6 <- data.frame(District = mRegTableRowLabels, Multiple_Regression_Percentage_of_Variation = mRegPercentDeterm, Additional_Variation = mRefDeltaPercentDeterm)
+table6
+```
+<br>
+Next I will calculate he standardized betas for the predictors in the multiple regression models:
+<br>
+<br>
+***Central District Regression Model Betas***
+```{r echo=FALSE, message=FALSE, comment = NA, warning=FALSE, collapse=TRUE, tidy=TRUE}
+lm.beta(centralMReg)
+betaCentralBikerAge <- -0.14563794
+betaCentralLanes <- 0.20965375
+betaCentralSpeed <- 0.08726232
+betaCentralDriverAge <- -0.07466148
+centralSD <- sd(na.exclude(bikeData$central_Accidents))
+bikerAgeSD <- sd(na.exclude(bikeData$biker_age))
+lanesSD <- sd(na.exclude(bikeData$lanes_of_traffic))
+speedSD <- sd(na.exclude(bikeData$speed_limit))
+driverAgeSD <- sd(na.exclude(bikeData$driver_age))
+centralSdChangeBikerAge <- betaCentralBikerAge * centralSD
+centralSdChangeLanes <- betaCentralLanes * centralSD
+centralSdChangeSpeed <- betaCentralSpeed * centralSD
+centralSdChangeDriverAge <- betaCentralDriverAge * centralSD
+```
+<br>
+The Beta for Biker Age: **`r format(betaCentralBikerAge, digits = 2)`**
+<br>
+This value of **`r format(betaCentralBikerAge, digits = 2)`** indicates that as the bikers age decreases by one standard deviation(**`r format(bikerAgeSD, digits =2)`**), Central District bike accidents decrease by **`r format(betaCentralBikerAge, digits = 2)`** standard deviations. The standard deviation for Central District bike accidents is **`r format(centralSD, digits = 2)`** and so this constitutes a change of **`r format(centralSdChangeBikerAge, digits = 2)`** Central District bike accidents. Therefore, for every **`r format(bikerAgeSD, digits = 2)` years** decrease in biker age, an extra **`r format(centralSdChangeBikerAge, digits = 2)`** is added to the amount of Central District bike accidents. This interpretation is true only if the effects of Lanes of Traffic, Speed Limit and Driver Age are held constant.
+<br>
+<br>
+The Beta for Lanes of Traffic: **`r format(betaCentralLanes, digits = 2)`**
+<br>
+This value of **`r format(betaCentralLanes, digits = 2)`** indicates that as the number of lanes increases by one standard deviation(**`r format(lanesSD, digits =2)`**), Central District bike accidents increase by **`r format(betaCentralLanes, digits = 2)`** standard deviations. The standard deviation for Central District bike accidents is **`r format(centralSD, digits = 2)`** and so this constitutes a change of **`r format(centralSdChangeLanes, digits = 2)`** Central District bike accidents. Therefore, for every **`r format(lanesSD, digits = 2)`** increase in lanes of traffic, an extra **`r format(centralSdChangeLanes, digits = 2)`** is added to the amount of Central District bike accidents. This interpretation is true only if the effects of Biker Age, Speed Limit and Driver Age are held constant.
+<br>
+<br>
+The Beta for Speed Limit: **`r format(betaCentralSpeed, digits = 2)`**
+<br>
+This value of **`r format(betaCentralSpeed, digits = 2)`** indicates that as the Speed Limit increases by one standard deviation(**`r format(speedSD, digits =2)`**), Central District bike accidents increase by **`r format(betaCentralSpeed, digits = 2)`** standard deviations. The standard deviation for Central District bike accidents is **`r format(centralSD, digits = 2)`** and so this constitutes a change of **`r format(centralSdChangeSpeed, digits = 2)`** Central District bike accidents. Therefore, for every **`r format(speedSD, digits = 2)`** increase in speed limit, an extra **`r format(centralSdChangeSpeed, digits = 2)`** is added to the amount of Central District bike accidents. This interpretation is true only if the effects of Biker Age, Lanes of Traffic and Driver Age are held constant.
+<br>
+<br>
+The Beta for Driver Age: **`r format(betaCentralDriverAge, digits = 2)`**
+<br>
+This value of **`r format(betaCentralDriverAge, digits = 2)`** indicates that as the Driver Age decreases by one standard deviation(**`r format(driverAgeSD, digits =2)`**), Central District bike accidents decrease by **`r format(betaCentralDriverAge, digits = 2)`** standard deviations. The standard deviation for Central District bike accidents is **`r format(centralSD, digits = 2)`** and so this constitutes a change of **`r format(centralSdChangeDriverAge, digits = 2)`** Central District bike accidents. Therefore, for every **`r format(speedSD, digits = 2)` years** decrease in Driver age, an extra **`r format(centralSdChangeDriverAge, digits = 2)`** is added to the amount of Central District bike accidents. This interpretation is true only if the effects of Biker Age, Lanes of Traffic and Speed Limit are held constant.
+<br>
+<br>
+***Eastern District Regression Model Betas***
+```{r echo=FALSE, message=FALSE, comment = NA, warning=FALSE, collapse=TRUE, tidy=TRUE}
+lm.beta(easternMReg)
+betaEasternBikerAge <- -0.09757828
+betaEasternLanes <- -0.14673323
+betaEasternSpeed <- 0.03912097
+betaEasternDriverAge <- -0.07217808
+easternSD <- sd(na.exclude(bikeData$eastern_Accidents))
+bikerAgeSD <- sd(na.exclude(bikeData$biker_age))
+lanesSD <- sd(na.exclude(bikeData$lanes_of_traffic))
+speedSD <- sd(na.exclude(bikeData$speed_limit))
+driverAgeSD <- sd(na.exclude(bikeData$driver_age))
+easternSdChangeBikerAge <- betaEasternBikerAge * easternSD
+easternSdChangeLanes <- betaEasternLanes * easternSD
+easternSdChangeSpeed <- betaEasternSpeed * easternSD
+easternSdChangeDriverAge <- betaEasternDriverAge * easternSD
+```
+<br>
+The Beta for Biker Age: **`r format(betaEasternBikerAge, digits = 2)`**
+<br>
+This value of **`r format(betaEasternBikerAge, digits = 2)`** indicates that as the bikers age decreases by one standard deviation(**`r format(bikerAgeSD, digits =2)`**), Eastern District bike accidents decrease by **`r format(betaEasternBikerAge, digits = 2)`** standard deviations. The standard deviation for Eastern District bike accidents is **`r format(easternSD, digits = 2)`** and so this constitutes a change of **`r format(easternSdChangeBikerAge, digits = 2)`** Eastern District bike accidents. Therefore, for every **`r format(bikerAgeSD, digits = 2)` years** decrease in biker age, an extra **`r format(easternSdChangeBikerAge, digits = 2)`** is added to the amount of Eastern District bike accidents. This interpretation is true only if the effects of Lanes of Traffic, Speed Limit and Driver Age are held constant.
+<br>
+<br>
+The Beta for Lanes of Traffic: **`r format(betaEasternLanes, digits = 2)`**
+<br>
+This value of **`r format(betaEasternLanes, digits = 2)`** indicates that as the number of lanes decreases by one standard deviation(**`r format(lanesSD, digits =2)`**), Eastern District bike accidents increase by **`r format(betaEasternLanes, digits = 2)`** standard deviations. The standard deviation for Central District bike accidents is **`r format(easternSD, digits = 2)`** and so this constitutes a change of **`r format(easternSdChangeLanes, digits = 2)`** Eastern District bike accidents. Therefore, for every **`r format(lanesSD, digits = 2)`** decrease in lanes of traffic, an extra **`r format(easternSdChangeLanes, digits = 2)`** is added to the amount of Eastern District bike accidents. This interpretation is true only if the effects of Biker Age, Speed Limit and Driver Age are held constant.
+<br>
+<br>
+The Beta for Speed Limit: **`r format(betaEasternSpeed, digits = 2)`**
+<br>
+This value of **`r format(betaEasternSpeed, digits = 2)`** indicates that as the Speed Limit increases by one standard deviation(**`r format(speedSD, digits =2)`**), Eastern District bike accidents increase by **`r format(betaEasternSpeed, digits = 2)`** standard deviations. The standard deviation for Eastern District bike accidents is **`r format(easternSD, digits = 2)`** and so this constitutes a change of **`r format(easternSdChangeSpeed, digits = 2)`** Central District bike accidents. Therefore, for every **`r format(speedSD, digits = 2)`** increase in speed limit, an extra **`r format(easternSdChangeSpeed, digits = 2)`** is added to the amount of Eastern District bike accidents. This interpretation is true only if the effects of Biker Age, Lanes of Traffic and Driver Age are held constant.
+<br>
+<br>
+The Beta for Driver Age: **`r format(betaEasternDriverAge, digits = 2)`**
+<br>
+This value of **`r format(betaEasternDriverAge, digits = 2)`** indicates that as the Driver Age decreases by one standard deviation(**`r format(driverAgeSD, digits =2)`**), Eastern District bike accidents decrease by **`r format(betaEasternDriverAge, digits = 2)`** standard deviations. The standard deviation for Eastern District bike accidents is **`r format(easternSD, digits = 2)`** and so this constitutes a change of **`r format(easternSdChangeDriverAge, digits = 2)`** Eastern District bike accidents. Therefore, for every **`r format(speedSD, digits = 2)` years** decrease in Driver age, an extra **`r format(easternSdChangeDriverAge, digits = 2)`** is added to the amount of Eastern District bike accidents. This interpretation is true only if the effects of Biker Age, Lanes of Traffic and Speed Limit are held constant.
+<br>
+<br>
+***Western District Regression Model Betas***
+```{r echo=FALSE, message=FALSE, comment = NA, warning=FALSE, collapse=TRUE, tidy=TRUE}
+lm.beta(westernMReg)
+betaWesternBikerAge <- 0.23997681
+betaWesternLanes <- -0.08182033
+betaWesternSpeed <- -0.12602948
+betaWesternDriverAge <- 0.14336124
+westernSD <- sd(na.exclude(bikeData$western_Accidents))
+bikerAgeSD <- sd(na.exclude(bikeData$biker_age))
+lanesSD <- sd(na.exclude(bikeData$lanes_of_traffic))
+speedSD <- sd(na.exclude(bikeData$speed_limit))
+driverAgeSD <- sd(na.exclude(bikeData$driver_age))
+westernSdChangeBikerAge <- betaWesternBikerAge * westernSD
+westernSdChangeLanes <- betaWesternLanes * westernSD
+westernSdChangeSpeed <- betaWesternSpeed * westernSD
+westernSdChangeDriverAge <- betaWesternDriverAge * westernSD
+```
+<br>
+The Beta for Biker Age: **`r format(betaWesternBikerAge, digits = 2)`**
+<br>
+This value of **`r format(betaWesternBikerAge, digits = 2)`** indicates that as the bikers age increases by one standard deviation(**`r format(bikerAgeSD, digits =2)`**), Western District bike accidents decrease by **`r format(betaWesternBikerAge, digits = 2)`** standard deviations. The standard deviation for Western District bike accidents is **`r format(westernSD, digits = 2)`** and so this constitutes a change of **`r format(westernSdChangeBikerAge, digits = 2)`** Western District bike accidents. Therefore, for every **`r format(bikerAgeSD, digits = 2)` years** increase in biker age, an extra **`r format(westernSdChangeBikerAge, digits = 2)`** is added to the amount of Western District bike accidents. This interpretation is true only if the effects of Lanes of Traffic, Speed Limit and Driver Age are held constant.
+<br>
+<br>
+The Beta for Lanes of Traffic: **`r format(betaWesternLanes, digits = 2)`**
+<br>
+This value of **`r format(betaWesternLanes, digits = 2)`** indicates that as the number of lanes decreases by one standard deviation(**`r format(lanesSD, digits =2)`**), Western District bike accidents increase by **`r format(betaWesternLanes, digits = 2)`** standard deviations. The standard deviation for Western District bike accidents is **`r format(westernSD, digits = 2)`** and so this constitutes a change of **`r format(westernSdChangeLanes, digits = 2)`** Western District bike accidents. Therefore, for every **`r format(lanesSD, digits = 2)`** decrease in lanes of traffic, an extra **`r format(westernSdChangeLanes, digits = 2)`** is added to the amount of Western District bike accidents. This interpretation is true only if the effects of Biker Age, Speed Limit and Driver Age are held constant.
+<br>
+<br>
+The Beta for Speed Limit: **`r format(betaWesternSpeed, digits = 2)`**
+<br>
+This value of **`r format(betaWesternSpeed, digits = 2)`** indicates that as the Speed Limit decreases by one standard deviation(**`r format(speedSD, digits =2)`**), Western District bike accidents increase by **`r format(betaWesternSpeed, digits = 2)`** standard deviations. The standard deviation for Western District bike accidents is **`r format(westernSD, digits = 2)`** and so this constitutes a change of **`r format(westernSdChangeSpeed, digits = 2)`** Western District bike accidents. Therefore, for every **`r format(speedSD, digits = 2)`** increase in speed limit, an extra **`r format(westernSdChangeSpeed, digits = 2)`** is added to the amount of Western District bike accidents. This interpretation is true only if the effects of Biker Age, Lanes of Traffic and Driver Age are held constant.
+<br>
+<br>
+The Beta for Driver Age: **`r format(betaWesternDriverAge, digits = 2)`**
+<br>
+This value of **`r format(betaWesternDriverAge, digits = 2)`** indicates that as the Driver Age decreases by one standard deviation(**`r format(driverAgeSD, digits =2)`**), Western District bike accidents decrease by **`r format(betaWesternDriverAge, digits = 2)`** standard deviations. The standard deviation for Western District bike accidents is **`r format(westernSD, digits = 2)`** and so this constitutes a change of **`r format(westernSdChangeDriverAge, digits = 2)`** Western District bike accidents. Therefore, for every **`r format(speedSD, digits = 2)` years** decrease in Driver age, an extra **`r format(westernSdChangeDriverAge, digits = 2)`** is added to the amount of Western District bike accidents. This interpretation is true only if the effects of Biker Age, Lanes of Traffic and Speed Limit are held constant.
+<br>
+<br>
+***Central District Confidence Intervals***
+```{r echo=FALSE, message=FALSE, comment = NA, warning=FALSE}
+confint(centralMReg)
+```
+<br>
+In this multiple regression model, only one predictors (lanes of traffic) has a small confidence interval and does not cross zero, indicating that the estimates for this parameters is likely to be representative of the true population values and is significant.
+<br>
+<br>
+***Eastern District Confidence Intervals***
+```{r echo=FALSE, message=FALSE, comment = NA, warning=FALSE}
+confint(easternMReg)
+```
+<br>
+In this multiple regression model, none of the predictors do not cross zero, indicating that the estimates for these parameters are not likely to be representative of the true population values and are not significant.
+<br>
+<br>
+***Western District Confidence Intervals***
+```{r echo=FALSE, message=FALSE, comment = NA, warning=FALSE}
+confint(westernMReg)
+```
+<br>
+In this multiple regression model, only one predictors (biker age) has a small confidence interval and does not cross zero, indicating that the estimates for this parameters is likely to be representative of the true population values and is significant.
+<br>
+<br>
+I will now compare the regression 
+### Multiple Regression Model Conclusion
+<br>
+Based on the findings above, I cannot say that this model, although better than the regression model, accurately predicts the number of bike accidents per district based on the low importance on the variables predicting the number of accidents per district. Not all the assumptions were met and we can not assume this model would not generalize to district's bike accident volume.
+<br>
+<br>
+
+## Logistical Regression Model
+
+The next model I am attempting to use to help predict the number of accidents per district is the Logistical Regression Model. I think this model will be more useful because I will be able to pull in additional categorical data points that I was not able to use in the Regression and Multiple Regression models above. 
+```{r echo=FALSE, message=FALSE, comment = NA, warning=FALSE, collapse=TRUE, tidy=TRUE}
+central_LogisticalReg <- glm(central_Accidents ~ biker_age + injury_to_biker + lanes_of_traffic + signal_present + speed_limit + driver_age + season + driver_skill_level, data = na.exclude(bikeData), family = binomial())
+western_LogisticalReg <- glm(western_Accidents ~ biker_age + injury_to_biker + lanes_of_traffic + signal_present + speed_limit + driver_age + season + driver_skill_level, data = bikeData, family = binomial())
+eastern_LogisticalReg <- glm(eastern_Accidents ~ biker_age + injury_to_biker + lanes_of_traffic + signal_present + speed_limit + driver_age + season + driver_skill_level, data = bikeData, family = binomial())
+biker_Caused_LogisticalReg <- glm(citation_Biker ~ biker_age + injury_to_biker + lanes_of_traffic + signal_present + speed_limit + driver_age + season + driver_skill_level, data = bikeData, family = binomial())
+driver_Caused_LogisticalReg <- glm(citation_Biker ~ biker_age + injury_to_biker + lanes_of_traffic + signal_present + speed_limit + driver_age + season + driver_skill_level, data = bikeData, family = binomial())
+```
+<br>
+***Logistical Regression Analysis Between Central District Accidents and Biker Age, Injury to Biker, Lanes of Traffic, Signal Present, Speed Limit, Driver Age, Season and Driver Skill Level***
+```{r echo=FALSE, message=FALSE, comment = NA, warning=FALSE, collapse=TRUE, tidy=TRUE}
+split <- sample.split(bikeData, SplitRatio = 0.8)
+split
+train <- subset(bikeData, split == "TRUE")
+validate <- subset(bikeData, split == "FALSE")
+# Train model using training data set
+central_LogisticalReg <- glm(central_Accidents ~ biker_age + injury_to_biker + lanes_of_traffic + signal_present + speed_limit + driver_age + season + driver_skill_level, data = train, family = binomial())
+summary(central_LogisticalReg)
+# Run validation data through the model built on training data
+res <- predict(central_LogisticalReg, validate, type = "response")
+res
+res2 <-predict(central_LogisticalReg, train, type = "response")
+res2
+#Validate model using confusion matrix
+confmatrix <- table(Actual_Value=train$central_Accidents, Predicted_Value = res2 >0.5)
+confmatrix
+#Accuracy
+(confmatrix[[1,1]] + confmatrix[[2,2]])/sum(confmatrix)
+```
+<br>
+***Logistical Regression Analysis Between Eastern District Accidents and Biker Age, Injury to Biker, Lanes of Traffic, Signal Present, Speed Limit, Driver Age, Season and Driver Skill Level***
+```{r echo=FALSE, message=FALSE, comment = NA, warning=FALSE, collapse=TRUE, tidy=TRUE}
+split <- sample.split(bikeData, SplitRatio = 0.8)
+split
+train <- subset(bikeData, split == "TRUE")
+validate <- subset(bikeData, split == "FALSE")
+# Train model using training data set
+eastern_LogisticalReg <- glm(eastern_Accidents ~ biker_age + injury_to_biker + lanes_of_traffic + signal_present + speed_limit + driver_age + season + driver_skill_level, data = train, family = binomial())
+summary(eastern_LogisticalReg)
+# Run validation data through the model built on training data
+res <- predict(eastern_LogisticalReg, validate, type = "response")
+res
+res2 <-predict(eastern_LogisticalReg, train, type = "response")
+res2
+#Validate model using confusion matrix
+confmatrix <- table(Actual_Value=train$eastern_Accidents, Predicted_Value = res2 >0.5)
+confmatrix
+#Accuracy
+(confmatrix[[1,1]] + confmatrix[[2,2]])/sum(confmatrix)
+```
+<br>
+***Logistical Regression Analysis Between Western District Accidents and Biker Age, Injury to Biker, Lanes of Traffic, Signal Present, Speed Limit, Driver Age, Season and Driver Skill Level***
+```{r echo=FALSE, message=FALSE, comment = NA, warning=FALSE, collapse=TRUE, tidy=TRUE}
+split <- sample.split(bikeData, SplitRatio = 0.8)
+split
+train <- subset(bikeData, split == "TRUE")
+validate <- subset(bikeData, split == "FALSE")
+# Train model using training data set
+western_LogisticalReg <- glm(western_Accidents ~ biker_age + injury_to_biker + lanes_of_traffic + signal_present + speed_limit + driver_age + season + driver_skill_level, data = train, family = binomial())
+summary(western_LogisticalReg)
+# Run validation data through the model built on training data
+res <- predict(western_LogisticalReg, validate, type = "response")
+res
+res2 <-predict(western_LogisticalReg, train, type = "response")
+res2
+#Validate model using confusion matrix
+confmatrix <- table(Actual_Value=train$western_Accidents, Predicted_Value = res2 >0.5)
+confmatrix
+#Accuracy
+(confmatrix[[1,1]] + confmatrix[[2,2]])/sum(confmatrix)
+```
+<br>
+
+### Logistical Regression Conclusion
+
+```{r echo=FALSE, message=FALSE, comment = NA, warning=FALSE, collapse=TRUE, tidy=TRUE}
+lRegTableRowLabels <- c("Central","Eastern", "Western")
+lRegVarInflu <- c("None", "Season - Spring", "Biker Age")
+lRegAccuracy <- c("67%", "74%", "66%")
+table7 <- data.frame(District = lRegTableRowLabels, Model_Accuracy = lRegAccuracy, Variables_Greatest_Influence = lRegVarInflu)
+table7
+```
+<br>
+The table above identified that the model is 66% accurate and above for all three districts, with the Eastern District coming in at 74% accurate. 
+This tells me that the Logistic Regression Model is a much better use case for this data set and predicting the number of bike accidents by district.
+<br>
+<br>
+
+# Conclusion
+
+Based on the analysis of the data with three models - Regression, Multiple Regression and Logistical - I can say that the correct model for predicting bike accidents in St. Paul, MN is the Logistical model. The regression and multiple regression models could only account for 10% or less of the variability in bike accident volumes per district. This is not a good predictor and we would need to collect more quantitative data in order to strengthen those models.
+
+The Logistical Regression model however did a much better job at predicting the volume of bike accidents for each district. The accuracy of over 66% was much higher than the regression and multiple regression models and I believe this is because of the additional categorical variables that were included in this model helped the model make a more accurate prediction versus only using numerical values. 
+
+66%, 67% and 74% accuracy rate for the three models are great numbers, but this model could always do better and get stronger if it were to be used in a real life setting. I think to increase this accuracy, we would need to collect more accurate data (data quality checking) and see if there are additional metrics we can add to the model that would help strengthen the models ability to predict the volume of bike accidents based on the variables input into the model.
