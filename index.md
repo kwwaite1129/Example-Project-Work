@@ -1,4 +1,8 @@
-## Welcome to GitHub Pages
+# Kenny Waite 
+### Data Scientist
+
+Welcome to my Data Science portfolio. This page gives and overview of the various data science projects I have worked on throughout my career. Please explore the different projects to gain additional insights into my data scientist skill set. 
+
 
 You can use the [editor on GitHub](https://github.com/kwwaite1129/Example-Project-Work/edit/gh-pages/index.md) to maintain and preview the content for your website in Markdown files.
 
