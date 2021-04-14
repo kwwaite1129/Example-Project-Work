@@ -1,3 +1,7 @@
+<h1><center>Services</center></h1>
+<br>
+
+
 Thank you for visiting my portfolio. Please explore the different projects and feel free to reach out with any questions/comments/feedback as you are looking through my site.
 
 <dl>
