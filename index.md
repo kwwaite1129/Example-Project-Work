@@ -4,16 +4,24 @@ Thank you for visiting my portfolio. Please explore the different projects and f
   <dt><a href = "https://kwwaite1129.github.io/Example-Project-Work/bike_sales.md">Bike Sales Analysis</a></dt>
   <dd>A regression model that predicts the quantity of bike models that would be sold in the future</dd>
   <br>
-  <dt>College Basketball Predictive Analytics</dt>
-  <dd>a Regression model provided the ability to predict a team’s win total based on various team based statistics</dd>
+  <dt>College Basketball Wins Predictor</dt>
+  <dd>A regression model that provided the ability to predict a team’s win total based on various team based statistics</dd>
   <dt>Twitter Sentiment Analysis</dt>
   <dd>A sentiment analysis model that calculates the attitude of a user’s tweet showing the trends in Twitter user’s opinions on various topics over time</dd>
   <dt>Volunteer Tax Return Analysis</dt>
   <dd>A regression analysis to determine if a person's adjusted gross income played a factor in whether they would have their taxes done by a volunteer</dd>
   <dt>Baseball Statistic Prediction</dt>
   <dd>A multiple regression analysis to determine the projected statistics for MLB baseball players in the upcoming baseball season</dd>
-  <dt></dt>
-  <dd></dd>
+  <dt>North Carolina Data Engineering Project</dt>
+  <dd>Manipulated data from three separate raw data sources (CSV file, Web Scraping, and JSON files) to build a dataset for future modeling use</dd>
+  <dt>Bike Accicent Analysis</dt>
+  <dd>Logistical Regression analysis to predict high risk areas for cycling accidents</dd>
+  <dt>Flight Safety Analysis</dt>
+  <dd>Leveraging historical flight data, proved flying is safer than it has ever been in human history</dd>
+  <dt>Sport Image Recognition</dt>
+  <dd>TBD</dd>
+  <dt>TBD DSC 680 Project 3</dt>
+  <dd>TBD</dd>
 </dl>
 
 
