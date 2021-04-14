@@ -1,7 +1,20 @@
-# Kenny Waite 
-### Data Scientist
+Thank you for visiting my portfolio. Please explore the different projects and feel free to reach out with any questions/comments/feedback as you are looking through my site.
 
-Welcome to my Data Science portfolio. This page gives and overview of the various data science projects I have worked on throughout my career. Please explore the different projects to gain additional insights into my data scientist skill set. 
+<dl>
+  <dt><a href = "https://kwwaite1129.github.io/Example-Project-Work/bike_sales.md">Bike Sales Analysis</a></dt>
+  <dd>A regression model that predicts the quantity of bike models that would be sold in the future</dd>
+  <dt>College Basketball Predictive Analytics</dt>
+  <dd>a Regression model provided the ability to predict a team’s win total based on various team based statistics</dd>
+  <dt>Twitter Sentiment Analysis</dt>
+  <dd>A sentiment analysis model that calculates the attitude of a user’s tweet showing the trends in Twitter user’s opinions on various topics over time</dd>
+  <dt>Volunteer Tax Return Analysis</dt>
+  <dd>A regression analysis to determine if a person's adjusted gross income played a factor in whether they would have their taxes done by a volunteer</dd>
+  <dt>Baseball Statistic Prediction</dt>
+  <dd>A multiple regression analysis to determine the projected statistics for MLB baseball players in the upcoming baseball season</dd>
+  <dt></dt>
+  <dd></dd>
+</dl>
+
 
 testing linking to an other page [Bike Sales Analysis](https://kwwaite1129.github.io/Example-Project-Work/bike_sales.md)
 
