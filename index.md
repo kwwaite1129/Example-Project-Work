@@ -3,7 +3,7 @@
 
 Welcome to my Data Science portfolio. This page gives and overview of the various data science projects I have worked on throughout my career. Please explore the different projects to gain additional insights into my data scientist skill set. 
 
-testing linking to an other page [Bike Sales Analysis](https://github.com/kwwaite1129/Example-Project-Work/blob/gh-pages/bike_sales.md)
+testing linking to an other page [Bike Sales Analysis](https://kwwaite1129.github.io/Example-Project-Work/bike_sales.md)
 
 Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
 
