@@ -3,8 +3,7 @@
 
 Welcome to my Data Science portfolio. This page gives and overview of the various data science projects I have worked on throughout my career. Please explore the different projects to gain additional insights into my data scientist skill set. 
 
-
-You can use the [editor on GitHub](https://github.com/kwwaite1129/Example-Project-Work/edit/gh-pages/index.md) to maintain and preview the content for your website in Markdown files.
+testing linking to an other page [Bike Sales Analysis](https://github.com/kwwaite1129/Example-Project-Work/blob/gh-pages/bike_sales.md)
 
 Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
 
