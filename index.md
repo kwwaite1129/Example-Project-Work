@@ -3,6 +3,7 @@ Thank you for visiting my portfolio. Please explore the different projects and f
 <dl>
   <dt><a href = "https://kwwaite1129.github.io/Example-Project-Work/bike_sales.md">Bike Sales Analysis</a></dt>
   <dd>A regression model that predicts the quantity of bike models that would be sold in the future</dd>
+  <br>
   <dt>College Basketball Predictive Analytics</dt>
   <dd>a Regression model provided the ability to predict a team’s win total based on various team based statistics</dd>
   <dt>Twitter Sentiment Analysis</dt>
